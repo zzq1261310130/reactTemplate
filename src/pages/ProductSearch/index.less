@@ -1,0 +1,35 @@
+.productSearchPage {
+  .list-operate-container {
+    display: flex;
+    flex-direction: row;
+    padding-bottom: 25px;
+    border-bottom: 2px solid rgba(220, 82, 81, 0);
+
+    > * {
+      margin-right: 10px;
+    }
+
+    .input-search {
+      width: 500px;
+    }
+  }
+  .productContent {
+    padding-top: 25px;
+  }
+  .productItem {
+    padding: 20px;
+    border: 1px solid rgba(220, 82, 81, 0.3);
+    border-radius: 6px;
+    .autoOrder {
+      margin: 20px 0;
+    }
+    .manualOrder {
+      margin: 20px 20px;
+      background-color: #fff;
+      color: rgb(255, 77, 79);
+      &:hover {
+        background-color: rgba(241, 228, 228, 0.2);
+      }
+    }
+  }
+}
