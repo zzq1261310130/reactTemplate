@@ -1,9 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Form, Input, Button, message, Spin } from 'antd'
+import { useNavigate, useLocation, useParams, Outlet } from 'react-router-dom'
+
 import axios from 'axios'
-import PubSub from 'pubsub-js'
 import Logout from './Logout'
 import './index.less'
+// import { useAuthContext } from '../../context/useAuth'
 
 const { Item } = Form
 
@@ -11,39 +13,53 @@ const AccountAuthorize = () => {
   const [isLogin, setLogin] = useState(
     localStorage.getItem('isLogin') || 'false'
   )
+  const [timer, setTimer] = useState(null)
   const [spinning, setSpinning] = useState(false)
   const form = useRef()
-  useEffect(() => {
-    if (localStorage.getItem('isLogin') === 'false') {
-      message.warning('请先登录连接！')
-    }
-    let timer = null
+  const navigate = useNavigate()
 
-    let token = PubSub.subscribe('isLogin', (_, data) => {
-      setLogin(localStorage.getItem('isLogin'))
-      const loginExpireTime = localStorage.getItem('loginExpireTime')
-      if (loginExpireTime && loginExpireTime - Date.now() > 10 * 60 * 1000) {
-        timer = setTimeout(() => {
-          localStorage.removeItem('loginExpireTime')
-          localStorage.setItem('isLogin', 'false')
-          PubSub.publish('isLogin', 'false')
-        }, loginExpireTime - Date.now())
-      } else {
-        localStorage.removeItem('loginExpireTime')
-        localStorage.setItem('isLogin', 'false')
-        PubSub.publish('isLogin', 'false')
-      }
-    })
-    return () => {
-      PubSub.unsubscribe(token)
-      clearTimeout(timer)
+  useEffect(() => {
+    if (isLogin === 'false') {
+      message.warning('请先登录连接！')
+    } else {
+      loginChange('true')
     }
+
+    return () => {}
   }, [])
 
   const clearForm = () => {
     form.current.resetFields()
   }
-
+  const loginChange = (status) => {
+    if (status === 'true') {
+      setLogin('true')
+      const loginExpireTime = localStorage.getItem('loginExpireTime')
+      if (loginExpireTime && loginExpireTime - Date.now() > 10 * 60 * 1000) {
+        const timerTmp = setTimeout(() => {
+          setLogin('false')
+          localStorage.removeItem('loginExpireTime')
+          localStorage.setItem('isLogin', 'false')
+          if (window.location.pathname !== '/accountAuthorize') {
+            navigate('/accountAuthorize')
+          }
+        }, loginExpireTime - Date.now())
+        clearTimeout(timer)
+        setTimer(timerTmp)
+      } else {
+        setLogin('false')
+        localStorage.removeItem('loginExpireTime')
+        localStorage.setItem('isLogin', 'false')
+        clearTimeout(timer)
+        if (window.location.pathname !== '/accountAuthorize') {
+          navigate('/accountAuthorize')
+        }
+      }
+    } else {
+      clearTimeout(timer)
+      setLogin('false')
+    }
+  }
   const handleSubmit = (params) => {
     setSpinning(true)
     axios
@@ -51,22 +67,17 @@ const AccountAuthorize = () => {
         ...params,
       })
       .then((res) => {
-        if (!res.data.data.Success) {
-          message.warning('账号或密码错误！')
-        }
-        localStorage.setItem('isLogin', String(res.data.data.Success))
-        PubSub.publish('isLogin', String(res.data.data.Success))
         if (res.data.data.Success) {
-          localStorage.setItem(
-            'loginExpireTime',
-            Date.now() + 1000 * 3600 * 24 * 7
-            // Date.now() + 1000 * 10
-          )
+          localStorage.setItem('isLogin', 'true')
+          localStorage.setItem('loginExpireTime', Date.now() + 1000 * 3600 * 24)
+          loginChange('true')
+        } else {
+          throw new Error('账号或密码错误！')
         }
       })
       .catch((error) => {
         console.log('error', error)
-        message.error('error!!!')
+        message.error(error.message)
       })
       .finally(() => {
         setSpinning(false)
@@ -77,7 +88,7 @@ const AccountAuthorize = () => {
     <Spin tip="连接中..." spinning={spinning}>
       <div className="accountAuthorizePage">
         {isLogin === 'true' ? (
-          <Logout></Logout>
+          <Logout loginChange={loginChange}></Logout>
         ) : (
           <Form
             ref={form}

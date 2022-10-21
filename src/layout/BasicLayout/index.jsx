@@ -9,6 +9,7 @@ import {
   BarsOutlined,
   SearchOutlined,
 } from '@ant-design/icons'
+// import AuthProvider from '../../context/useAuth'
 
 import './index.less'
 
@@ -82,7 +83,6 @@ const App = (props) => {
       navigate(path)
     } else {
       message.warning('请先登录连接！')
-
       navigate('/accountAuthorize')
     }
   }
@@ -139,9 +139,13 @@ const App = (props) => {
         </Header>
         <Content className="layout-content">
           <Card className="layout-content-container">
+            {/* <AuthProvider> */}
             <Outlet />
+            {/* </AuthProvider> */}
           </Card>
-          <Footer className="layout-footer">Copyright© 2022 Minieye</Footer>
+          <div className="layout-footer">
+            <Footer>Copyright© 2022 Minieye</Footer>
+          </div>
         </Content>
       </Layout>
     </Layout>

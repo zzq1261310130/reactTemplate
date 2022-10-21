@@ -4,6 +4,7 @@ const getParams = () => {
       submit: 0,
       order_number: '',
       ti_order_number: '',
+      ti_pn: '',
     },
     range: {
       submit: 1,
@@ -14,9 +15,19 @@ const getParams = () => {
       submit: 0,
       order_number: '',
       operate: 0,
+      export_excel: 0,
+      comment: ''
     },
   }
 }
+const copyParams = (params) => {
+  return {
+    query: { ...params.query },
+    range: { ...params.range },
+    operation: { ...params.operation }
+  }
+}
+
 const OrderKeysDict = new Map([
   ['id', 'ID'],
   ['order_number', 'MINIEYE订单号'],
@@ -33,6 +44,7 @@ const OrderKeysDict = new Map([
   ['refresh_status', '刷单状态'],
   ['order_status', '成交状态'],
   ['operator', '操作人'],
+  ['comment', '备注']
 ])
 const refershStatusMap = new Map([
   [0, '完成'],
@@ -51,4 +63,4 @@ const StatusMap = new Map([
   ['order_status', orderStatusMap],
 ])
 
-export { getParams, OrderKeysDict, StatusMap }
+export { getParams, OrderKeysDict, StatusMap, copyParams }

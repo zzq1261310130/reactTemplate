@@ -1,6 +1,6 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import vitePluginImp from "vite-plugin-imp";
+import { defineConfig } from "vite"
+import react from "@vitejs/plugin-react"
+import vitePluginImp from "vite-plugin-imp"
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -33,16 +33,17 @@ export default defineConfig({
         replacement: `${__dirname}/src`,
       },
     ],
+    base: "/public/"
   },
   server: {
     port: 9696,
     proxy: {
       "/tiOrder": {
-        target: "http://192.168.6.215:8000/",
+        target: "http://192.168.6.215:80/",
         rewrite: (path) => path.replace(/^\/tiOrder/, ""),
         changeOrigin: true,
         secure: true, // 是否https接口
       },
     },
   },
-});
+})

@@ -1,18 +1,17 @@
-import React from "react";
-import { LogoutOutlined } from "@ant-design/icons";
-import { Col, Statistic } from "antd";
-import PubSub from "pubsub-js";
-const { Countdown } = Statistic;
+import React from 'react'
+import { LogoutOutlined } from '@ant-design/icons'
+import { Col, Statistic } from 'antd'
+const { Countdown } = Statistic
 
-import "./logout.less";
+import './logout.less'
 
-export default function logout() {
+export default function logout(prop) {
   const clickLogout = () => {
-    localStorage.setItem("isLogin", "false");
-    localStorage.removeItem("loginExpireTime");
-    PubSub.publish("isLogin", "false");
-  };
-  const deadline = +localStorage.getItem("loginExpireTime");
+    localStorage.setItem('isLogin', 'false')
+    localStorage.removeItem('loginExpireTime')
+    prop.loginChange('false')
+  }
+  const deadline = +localStorage.getItem('loginExpireTime')
 
   return (
     <>
@@ -31,5 +30,5 @@ export default function logout() {
         </div>
       </div>
     </>
-  );
+  )
 }

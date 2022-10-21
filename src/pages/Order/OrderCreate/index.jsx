@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react'
-import { useRoutes, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import {
   Modal,
@@ -10,7 +10,6 @@ import {
   Col,
   Checkbox,
   InputNumber,
-  message,
   Spin,
   AutoComplete,
 } from 'antd'
@@ -56,13 +55,12 @@ const OrderCreate = () => {
           ...values,
           auto_split: +Boolean(values.auto_split),
           buy_max: +Boolean(values.buy_max),
-          limit_min: +Boolean(values.limit_min),
-          email: values.email.split(','),
+          limit_min_pack: +Boolean(values.limit_min_pack),
+          limit_min_order: +Boolean(values.limit_min_order),
+          email: values.email.split(';'),
           max_price: values.max_price_ ? values.max_price : 9999,
           notify: 0,
         }
-        console.log('params', params)
-
         return axios.post('/tiOrder/orderCreate', { ...params, buy_anyway: 0 })
       })
       .then((res) => {
@@ -84,10 +82,11 @@ const OrderCreate = () => {
               ),
               onCancel: (close) => {
                 close()
-                reject('订单已取消！')
+                reject(new Error('订单已取消！'))
               },
               onOk: (close) => {
                 close()
+                setSpinning(true)
                 resolve(
                   axios.post('/tiOrder/orderCreate', {
                     ...params,
@@ -102,22 +101,18 @@ const OrderCreate = () => {
         }
       })
       .then((res) => {
-        console.log(res)
-        setSpinning(false)
         Modal.success({
           content: res.data.message,
         })
       })
       .catch((e) => {
-        console.log(e)
-        setSpinning(false)
         Modal.error({
           title:
             e ===
             '请确认TI PN是否正确输入, 或在TI官网购物页面最底部确认要下单的具体型号'
               ? 'TI PN错误'
               : '请注意',
-          content: e.message || e || '请求出错！',
+          content: e.message || e || '请求出错!!!',
         })
       })
       .finally(() => {
@@ -125,6 +120,7 @@ const OrderCreate = () => {
       })
   }
   const onlyNoticeClick = (e) => {
+    setSpinning(true)
     e.preventDefault()
     form.current
       .validateFields()
@@ -133,17 +129,19 @@ const OrderCreate = () => {
           ...values,
           auto_split: +Boolean(values.auto_split),
           buy_max: +Boolean(values.buy_max),
-          limit_min: +Boolean(values.limit_min),
-          email: values.email.split(','),
+          limit_min_pack: +Boolean(values.limit_min_pack),
+          limit_min_order: +Boolean(values.limit_min_order),
+          email: values.email.split(';'),
           max_price: values.max_price_ ? values.max_price : 9999,
           notify: 1,
           buy_anyway: 0,
         }
-        console.log('params', params)
 
         return axios.post('/tiOrder/orderCreate', { ...params })
       })
       .then((res) => {
+        setSpinning(false)
+
         if (
           res.data.message ===
           '请确认TI_PN是否正确输入,或在TI官网购物页面最底部确认要下单的具体型号'
@@ -162,8 +160,11 @@ const OrderCreate = () => {
       .catch((e) => {
         Modal.error({
           title: '请求出错',
-          content: e.message || '请求出错！！！',
+          content: e.message || '请求出错!!!',
         })
+      })
+      .finally(() => {
+        setSpinning(false)
       })
   }
 
@@ -172,7 +173,6 @@ const OrderCreate = () => {
       <div>
         <Form
           id="area"
-          getPopupContainer={() => document.getElementById('area')}
           className="order-create-form"
           ref={form}
           onFinish={handleSubmit}
@@ -180,7 +180,7 @@ const OrderCreate = () => {
           labelWrap
           initialValues={{
             quantity: 0,
-            max_price: 0,
+            max_price: 0.001,
             refresh_time: 10,
           }}
           // AutoComplete="off"
@@ -210,7 +210,13 @@ const OrderCreate = () => {
               <Item
                 label="订购数量"
                 name="quantity"
-                rules={[{ required: true }]}
+                rules={[
+                  { required: true },
+                  {
+                    type: 'number',
+                    min: 1,
+                  },
+                ]}
                 {...twoFormItemLayout}>
                 <InputNumber
                   style={{
@@ -234,7 +240,7 @@ const OrderCreate = () => {
             <Col span={12}>
               <Item
                 label="物料备注"
-                name="material_note"
+                name="comment"
                 rules={[{ required: false }]}
                 {...twoFormItemLayout}>
                 <Input />
@@ -258,7 +264,7 @@ const OrderCreate = () => {
             </Col>
             <Col span={12}>
               <Item
-                name="auto_modify_min_quantity"
+                name="limit_min_order"
                 valuePropName="checked"
                 wrapperCol={{
                   offset: 6,
@@ -274,7 +280,7 @@ const OrderCreate = () => {
           <Row gutter={24}>
             <Col span={12}>
               <Item
-                name="limit_min"
+                name="limit_min_pack"
                 valuePropName="checked"
                 wrapperCol={{
                   offset: 6,
@@ -317,6 +323,7 @@ const OrderCreate = () => {
               <Item name="max_price" rules={[{ required: true }]} noStyle>
                 <InputNumber
                   addonAfter="$"
+                  min={0.001}
                   disabled={lastCheckState ? false : true}
                 />
               </Item>

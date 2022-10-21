@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Input,
-  Button,
-  Badge,
-  Descriptions,
-  Empty,
-  Table,
-  message,
-  Spin,
-  Modal,
-} from 'antd'
+import { Input, Button, Descriptions, Empty, Table, message, Spin } from 'antd'
 import axios from 'axios'
-import { useRoutes, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { nanoid } from 'nanoid'
 import './index.less'
 const { Search } = Input
@@ -20,11 +10,11 @@ const productInfoKeysDict = new Map([
   ['tiPartNumber', '完整PN'],
   ['lifeCycle', '生命周期'],
   ['packageType', '包装类型'],
-  ['description', '描述'],
-  ['quantity', '库存数量'],
-  ['minimumOrderQuantity', '单次下单数量限制'],
   ['standardPackQuantity', '标准包装数量'],
-  ['packageCarrier', '包裹承运人'],
+  ['quantity', '库存数量'],
+  ['minimumOrderQuantity', '单次下单数量下限'],
+  ['limit', '单次下单数量上限'],
+  ['description', '描述'],
   ['pricing', '阶梯价格表'],
 ])
 
@@ -45,8 +35,11 @@ const ProductSearch = () => {
     },
   ]
   const searchProduct = (key, event) => {
-    // console.log(event.target.tagName)
     if (event.type === 'click' && event.target.tagName === 'INPUT') {
+      return
+    }
+    if (key.length === 0) {
+      message.warning('输入不能为空!!!')
       return
     }
     setSpinning(true)
@@ -58,19 +51,19 @@ const ProductSearch = () => {
         let productInfo = new Map()
 
         if (res.data.data.errors) {
-          message.warning('商品不存在, 请确认输入的TI PN是否正确！')
+          message.warning('商品不存在, 请确认输入的TI PN是否正确!!!')
           setSearchDate(productInfo)
           return
         }
 
         for (let item of productInfoKeysDict.keys()) {
-          productInfo.set(item, res.data.data?.[item])
+          productInfo.set(item, res.data.data[item] || '/')
         }
         setSearchDate(productInfo)
       })
       .catch((error) => {
         console.log(error)
-        message.error('查找失败！！！')
+        message.error('查找失败!!!')
       })
       .finally(() => {
         setSpinning(false)
@@ -94,7 +87,7 @@ const ProductSearch = () => {
             allowClear
             enterButton
             onSearch={searchProduct}
-            placeholder="请输入TI PN！"
+            placeholder="请输入TI PN..."
           />
           <Button>
             <a href="https://www.ti.com/" target="_blank">
@@ -134,9 +127,8 @@ const ProductSearch = () => {
                     label={productInfoKeysDict.get('minimumOrderQuantity')}>
                     {searchData.get('minimumOrderQuantity')}
                   </Descriptions.Item>
-                  <Descriptions.Item
-                    label={productInfoKeysDict.get('packageCarrier')}>
-                    {searchData.get('packageCarrier')}
+                  <Descriptions.Item label={productInfoKeysDict.get('limit')}>
+                    {searchData.get('limit')}
                   </Descriptions.Item>
                   <Descriptions.Item
                     label={productInfoKeysDict.get('description')}

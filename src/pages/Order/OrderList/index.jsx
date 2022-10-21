@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useRoutes, useNavigate } from 'react-router-dom'
-import { WarningOutlined, SearchOutlined } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
+import {
+  WarningOutlined,
+  FilterOutlined,
+  FileSearchOutlined,
+} from '@ant-design/icons'
 import Draggable from 'react-draggable'
 import {
   Space,
@@ -17,8 +21,9 @@ import {
   Select,
 } from 'antd'
 import axios from 'axios'
-import { getParams, OrderKeysDict, StatusMap } from './const'
+import { getParams, OrderKeysDict, StatusMap, copyParams } from './const'
 import './index.less'
+const { Search } = Input
 
 const operateUI = (type, item, ref) => {
   switch (type) {
@@ -75,7 +80,7 @@ const operateUI = (type, item, ref) => {
                   key={orderKey}
                   label={OrderKeysDict.get(orderKey)}
                   name={orderKey}>
-                  <Input disabled />
+                  <Input disabled={orderKey === 'comment' ? false : true} />
                 </Form.Item>
               )
             })}
@@ -99,6 +104,7 @@ const OrderList = (props) => {
   const [isLoading, setLoading] = useState(false)
   const [itemDetail, setItem] = useState({})
   const [curPage, setCurPage] = useState(1)
+  const [filterKey, setFilterKey] = useState('')
   const [disabled, setDisabled] = useState(false)
   const [bounds, setBounds] = useState({
     left: 0,
@@ -109,12 +115,14 @@ const OrderList = (props) => {
   const draggleRef = useRef(null)
   const detailForm = useRef(null)
 
+  const [curParams, setCurParams] = useState(getParams())
+
   const navigate = useNavigate()
   useEffect(() => {
     if (localStorage.getItem('isLogin') === 'false') {
       navigate('/accountAuthorize')
     }
-    postOrderList(getParams())
+    postOrderList(curParams)
   }, [])
   useEffect(() => {
     if (detailForm.current) {
@@ -127,20 +135,34 @@ const OrderList = (props) => {
     }
   }, [itemDetail])
 
-  const postOrderList = (params) => {
+  const postOrderList = (params, pageSize = 10) => {
     setLoading(true)
     axios
       .post('/tiOrder/orderList', { ...params })
       .then((res) => {
-        const orderList = res.data.range.slice(1)
-        orderList.forEach((item) => (item.key = item.id))
-        setOrderList(orderList)
-        setTotalOrder(res.data.range[0].order_count)
-        if (params.operation.submit === 1) {
-          if (res.statusText === 'OK') {
-            message.success('success。。。')
-          } else {
-            message.error('error!!!')
+        if (params.query.submit) {
+          const start =
+            params.range.start >= res.data.query.length
+              ? params.range.start - pageSize >= 0
+                ? params.range.start - pageSize
+                : 0
+              : params.range.start
+          const end = start + pageSize
+          const orderList = res.data.query.slice(start, end)
+          orderList.forEach((item) => (item.key = item.id))
+          setOrderList(orderList)
+          setTotalOrder(res.data.query.length)
+        } else {
+          const orderList = res.data.range.slice(1)
+          orderList.forEach((item) => (item.key = item.id))
+          setOrderList(orderList)
+          setTotalOrder(res.data.range[0].order_count)
+          if (params.operation.submit === 1) {
+            if (res.statusText === 'OK') {
+              message.success('success。。。')
+            } else {
+              message.error('error!!!')
+            }
           }
         }
       })
@@ -162,55 +184,99 @@ const OrderList = (props) => {
   const handleOk = (_, pageSize = 10) => {
     setIsModalOpen(false)
 
+    const tmpParams = copyParams(curParams)
+    tmpParams.range = {
+      submit: 1,
+      start: pageSize * (curPage - 1),
+      end: pageSize * curPage,
+    }
+
     if (modalTitle === '详情/修改') {
       const form = { ...detailForm.current.getFieldValue() }
-      if (form.refresh_status === '2') {
-        const curParams = {
-          ...getParams(),
-          range: {
-            submit: 1,
-            start: pageSize * (curPage - 1),
-            end: pageSize * curPage,
-          },
-          operation: {
-            submit: 1,
-            order_number: form.order_number,
-            operate: 0,
-          },
-        }
-        postOrderList(curParams)
+      tmpParams.operation = {
+        submit: 1,
+        order_number: form.order_number,
+        operate: 2,
+        comment: form.comment,
+        export_excel: 0,
+      }
+      if (form.refresh_status === '2' && itemDetail.refresh_status === '1') {
+        tmpParams.operation.operate = 0
       }
     }
     if (modalTitle === '删除') {
       console.log(itemDetail)
-      const curParams = {
-        ...getParams(),
-        range: {
-          submit: 1,
-          start: pageSize * (curPage - 1),
-          end: pageSize * curPage,
-        },
-        operation: {
-          submit: 1,
-          order_number: itemDetail.order_number,
-          operate: 1,
-        },
+      tmpParams.operation = {
+        submit: 1,
+        order_number: itemDetail.order_number,
+        operate: 1,
+        export_excel: 0,
+        comment: itemDetail.comment,
       }
-      postOrderList(curParams)
     }
+    postOrderList(tmpParams)
+    setCurParams(tmpParams)
   }
 
   const changePage = (page, pageSize = 10) => {
     setCurPage(page)
-    const curParmas = {
-      ...getParams(),
-      range: {
-        submit: 1,
-        start: pageSize * (page - 1),
-        end: pageSize * page,
-      },
+    const tmpParams = copyParams(curParams)
+    tmpParams.range = {
+      submit: 1,
+      start: pageSize * (page - 1),
+      end: pageSize * page,
     }
-    postOrderList(curParmas)
+    tmpParams.operation = {
+      submit: 0,
+      order_number: '',
+      operate: 0,
+      export_excel: 0,
+      comment: '',
+    }
+    postOrderList(tmpParams)
+    setCurParams(tmpParams)
+  }
+  const filterKeyChange = (e) => {
+    setFilterKey(e.target.value)
+  }
+  const filterOrder = () => {
+    const tmpParams = copyParams(getParams())
+    tmpParams.query = {
+      submit: filterKey.length > 0 ? 1 : 0,
+      order_number: '',
+      ti_order_number: '',
+      ti_pn: filterKey,
+    }
+    postOrderList(tmpParams)
+    setCurParams(tmpParams)
+  }
+  const exportEcel = () => {
+    const tmpParams = copyParams(getParams())
+    tmpParams.operation.export_excel = 1
+    tmpParams.operation.operate = 26
+    tmpParams.range.submit = 0
+    tmpParams.operation.submit = 1
+
+    axios({
+      url: '/tiOrder/orderList',
+      method: 'post',
+      data: { ...tmpParams },
+      responseType: 'blob',
+    }).then((res) => {
+      console.log(res)
+      const blob = new Blob([res.data])
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(
+        new Blob([blob], { type: 'application/vnd.ms-excel' })
+      )
+      a.download = `orders@${new Date()
+        .toLocaleString()
+        .replaceAll(/[\/:]/g, '_')}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      message.success('导出成功！')
+    })
   }
 
   const onStart = (_event, uiData) => {
@@ -328,6 +394,22 @@ const OrderList = (props) => {
 
   return (
     <div>
+      <Search
+        // prefix={<FileSearchOutlined />}
+        addonBefore={
+          <>
+            <FileSearchOutlined style={{ fontSize: 24, color: '#dc5251' }} />
+            {/* <span>订单查找</span> */}
+          </>
+        }
+        placeholder="请输入TI PN进行查找!!!"
+        enterButton="Search"
+        size="large"
+        value={filterKey}
+        onSearch={filterOrder}
+        onChange={filterKeyChange}
+        className="filterOrder"
+      />
       {orderList.length === 0 ? (
         <Empty />
       ) : (
@@ -339,7 +421,14 @@ const OrderList = (props) => {
             pagination={false}
             loading={isLoading}
           />
-          <div>
+          <div className="footer">
+            <Button
+              type="primary"
+              value="large"
+              onClick={exportEcel}
+              className="exportButton">
+              导出excel
+            </Button>
             <Pagination
               className="pagination"
               defaultCurrent={1}
